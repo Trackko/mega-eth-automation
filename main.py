@@ -12,7 +12,7 @@ with open('wallets.json', 'r') as f:
 # Example: Send transactions
 def send_transaction(wallet):
     txn = {
-        'to': Web3.toChecksumAddress("0xRecipientAddress"),
+        'to': Web3.to_checksum_address("0xRecipientAddress"),
         'value': web3.toWei(0.01, 'ether'),
         'gas': 21000,
         'gasPrice': web3.toWei('5', 'gwei'),
