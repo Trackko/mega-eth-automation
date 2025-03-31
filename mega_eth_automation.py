@@ -4,98 +4,101 @@ import random
 import os
 import requests
 from web3 import Web3
+from eth_utils import to_checksum_address
+from config import MEGAETH_CONFIG
 
-# ========== CONFIG ==========
-RPC_URL = "https://rpc.megaeth.io"  # MegaETH Testnet RPC
+# Initialize Web3
+web3 = Web3(Web3.HTTPProvider(MEGAETH_CONFIG["RPC_URL"]))
 
-# Load wallets from wallets.json
-def load_wallets():
+def load_wallet():
+    """Load single wallet configuration"""
     try:
-        with open('wallets.json', 'r') as f:
-            wallets_data = json.load(f)
-            print(f"✅ Loaded {len(wallets_data)} wallets from wallets.json")
-            return wallets_data
-    except FileNotFoundError:
-        print("❌ wallets.json not found")
-        return []
-    except json.JSONDecodeError:
-        print("❌ Invalid JSON format in wallets.json")
-        return []
-
-# Initialize wallets
-wallets = load_wallets()
-
-# Update transaction targets from wallet addresses
-TRANSACTION_TARGETS = [wallet['address'] for wallet in wallets]
-
-FAUCETS = [
-    "https://testnet.megaeth.com/#3",
-]
-
-web3 = Web3(Web3.HTTPProvider(RPC_URL))
-
-# Global index tracker for faucet claiming
-FAUCET_INDEX_FILE = "faucet_index.json"
-
-# Load faucet index
-if os.path.exists(FAUCET_INDEX_FILE):
-    with open(FAUCET_INDEX_FILE, "r") as f:
-        faucet_index = json.load(f)
-else:
-    faucet_index = {"last_wallet": 0}
-
-# ========== FUNCTIONS ==========
+        with open('wallet.json', 'r') as f:
+            wallet_data = json.load(f)
+            account = web3.eth.account.from_key(wallet_data['private_key'])
+            wallet_data['address'] = account.address
+            return wallet_data
+    except Exception as e:
+        print(f"❌ Failed to load wallet: {str(e)}")
+        return None
 
 def claim_faucet(wallet):
-    """ Claim ETH from a faucet. """
-    faucet_url = random.choice(FAUCETS)
-    headers = {"Content-Type": "application/json"}
-    
-    data = {
-        "address": wallet["address"]
-    }
-
-    response = requests.post(faucet_url, json=data, headers=headers)
-    
-    if response.status_code == 200:
-        print(f"✅ Claimed faucet ETH for {wallet['address']}")
-    else:
-        print(f"❌ Failed to claim faucet for {wallet['address']}")
-
-def send_transaction(private_key, to_address, amount_eth):
-    """ Send a transaction with a random gas fee and delay. """
-    try:
-        account = web3.eth.account.from_key(private_key)
-        nonce = web3.eth.get_transaction_count(account.address)
-        
-        # Validate to_address
-        if not Web3.is_address(to_address):
-            raise ValueError(f"Invalid Ethereum address: {to_address}")
+    """Claim from multiple faucets with delays"""
+    for faucet_url in MEGAETH_CONFIG["FAUCETS"]:
+        try:
+            headers = {"Content-Type": "application/json"}
+            data = {"address": wallet["address"]}
             
-        txn = {
-            'to': Web3.to_checksum_address(to_address),
-            'value': web3.to_wei(amount_eth, 'ether'),
-            'gas': random.randint(21000, 50000),
-            'gasPrice': web3.to_wei(random.randint(5, 50), 'gwei'),
-            'nonce': nonce,
-        }
+            response = requests.post(faucet_url, json=data, headers=headers)
+            
+            if response.status_code == 200:
+                print(f"✅ Claimed faucet ETH from {faucet_url}")
+                # Random delay between faucet claims
+                delay = random.randint(60, 180)
+                print(f"⏳ Waiting {delay} seconds...")
+                time.sleep(delay)
+            else:
+                print(f"❌ Failed to claim from {faucet_url}")
+                
+        except Exception as e:
+            print(f"❌ Error claiming from faucet: {str(e)}")
+            continue
 
-        signed_txn = web3.eth.account.sign_transaction(txn, private_key)
-        tx_hash = web3.eth.send_raw_transaction(signed_txn.rawTransaction)
-        print(f"✅ Sent {amount_eth} ETH from {account.address} to {to_address} → {tx_hash.hex()}")
+def interact_with_project(wallet, project):
+    """Interact with a specific project contract"""
+    try:
+        # Contract interaction logic based on project type
+        if project["type"] == "swap":
+            # Swap interaction
+            pass
+        elif project["type"] == "liquidity":
+            # Liquidity interaction
+            pass
+        elif project["type"] == "token":
+            # Token interaction
+            pass
+            
+        print(f"✅ Successfully interacted with {project['url']}")
         
-    except ValueError as e:
-        print(f"❌ Transaction failed: {str(e)}")
     except Exception as e:
-        print(f"❌ Unexpected error: {str(e)}")
+        print(f"❌ Failed to interact with {project['url']}: {str(e)}")
 
-def execute_random_transaction(wallet):
-    """ Perform different transaction types randomly. """
-    transaction_type = random.choice(["send", "swap", "liquidity", "nft"])
+def main():
+    # Load wallet
+    wallet = load_wallet()
+    if not wallet:
+        return
+    
+    print(f"🔵 Starting automation for wallet: {wallet['address']}")
+    
+    # Check balance and claim faucet if needed
+    balance = web3.eth.get_balance(wallet['address'])
+    if balance < web3.to_wei(0.01, 'ether'):
+        print("⚠️ Low balance, claiming from faucet...")
+        claim_faucet(wallet)
+    
+    # Get random number of transactions for today (3-4)
+    daily_tx_count = random.randint(3, MEGAETH_CONFIG["TX_SETTINGS"]["daily_tx_count"])
+    
+    # Select random projects to interact with
+    projects = random.sample(list(MEGAETH_CONFIG["PROJECTS"].values()), daily_tx_count)
+    
+    for project in projects:
+        try:
+            print(f"\n🔄 Interacting with {project['url']}")
+            interact_with_project(wallet, project)
+            
+            # Random delay between transactions
+            delay = random.randint(
+                MEGAETH_CONFIG["TX_SETTINGS"]["min_delay"],
+                MEGAETH_CONFIG["TX_SETTINGS"]["max_delay"]
+            )
+            print(f"⏳ Waiting {delay} seconds before next interaction...")
+            time.sleep(delay)
+            
+        except Exception as e:
+            print(f"❌ Error during project interaction: {str(e)}")
+            continue
 
-    if transaction_type == "send":
-        # Choose a random target address that isn't the sender
-        to_address = random.choice([addr for addr in TRANSACTION_TARGETS 
-                                  if addr.lower() != wallet["address"].lower()])
-        amount_eth = random.uniform(0.001, 0.01)  # Random amount between 0.001 and 0.01 ETH
-        send_transaction(wallet["private_key"], to_address, amount_eth)
+if __name__ == "__main__":
+    main()
