@@ -1,1 +1,11 @@
+[
+    {
+        "address": "0xYourAddress1",
+        "private_key": "0xYourPrivateKey1"
+    },
+    {
+        "address": "0xYourAddress2",
+        "private_key": "0xYourPrivateKey2"
+    }
+]
 
