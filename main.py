@@ -13,13 +13,13 @@ with open('wallets.json', 'r') as f:
 def send_transaction(wallet):
     txn = {
         'to': Web3.to_checksum_address("0xRecipientAddress"),
-        'value': web3.toWei(0.01, 'ether'),
+        'value': web3.to_wei(0.01, 'ether'),  # Changed from toWei
         'gas': 21000,
-        'gasPrice': web3.toWei('5', 'gwei'),
-        'nonce': web3.eth.getTransactionCount(wallet['address'])
+        'gasPrice': web3.to_wei('5', 'gwei'),  # Changed from toWei
+        'nonce': web3.eth.get_transaction_count(wallet['address'])  # Changed from getTransactionCount
     }
     signed_txn = web3.eth.account.sign_transaction(txn, wallet['private_key'])
-    tx_hash = web3.eth.sendRawTransaction(signed_txn.rawTransaction)
+    tx_hash = web3.eth.send_raw_transaction(signed_txn.rawTransaction)  # Changed from sendRawTransaction
     print(f"Transaction sent: {tx_hash.hex()}")
 
 # Run transactions
