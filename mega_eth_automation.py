@@ -10,14 +10,18 @@ from config import MEGAETH_CONFIG
 # Initialize Web3
 web3 = Web3(Web3.HTTPProvider(MEGAETH_CONFIG["RPC_URL"]))
 
-def load_wallet():
-    """Load single wallet configuration"""
+def load_random_wallet():
+    """Load random wallet from wallets.json"""
     try:
-        with open('wallet.json', 'r') as f:
-            wallet_data = json.load(f)
-            account = web3.eth.account.from_key(wallet_data['private_key'])
-            wallet_data['address'] = account.address
-            return wallet_data
+        with open('wallets.json', 'r') as f:
+            wallets = json.load(f)
+            # Select random wallet
+            wallet = random.choice(wallets)
+            # Verify wallet
+            account = web3.eth.account.from_key(wallet['private_key'])
+            wallet['address'] = account.address
+            print(f"✅ Loaded wallet: {wallet['address']}")
+            return wallet
     except Exception as e:
         print(f"❌ Failed to load wallet: {str(e)}")
         return None
@@ -65,7 +69,7 @@ def interact_with_project(wallet, project):
 
 def main():
     # Load wallet
-    wallet = load_wallet()
+    wallet = load_random_wallet()
     if not wallet:
         return
     
