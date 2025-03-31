@@ -4,11 +4,52 @@ import random
 import os
 import requests
 from web3 import Web3
+from requests.packages.urllib3.exceptions import InsecureRequestWarning
 from eth_utils import to_checksum_address
 from config import MEGAETH_CONFIG
 
-# Initialize Web3
-web3 = Web3(Web3.HTTPProvider(MEGAETH_CONFIG["RPC_URL"]))
+# Suppress SSL warnings
+requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+
+def init_web3():
+    """Initialize Web3 with fallback RPC endpoints"""
+    session = requests.Session()
+    session.verify = False
+    
+    for rpc_url in MEGAETH_CONFIG["RPC_URLS"]:
+        try:
+            provider = Web3.HTTPProvider(
+                rpc_url,
+                request_kwargs={
+                    'timeout': 30,
+                    'verify': False,
+                    'session': session
+                }
+            )
+            w3 = Web3(provider)
+            
+            # Test connection
+            w3.eth.get_block_number()
+            print(f"✅ Connected to RPC: {rpc_url}")
+            return w3
+            
+        except Exception as e:
+            print(f"❌ Failed to connect to {rpc_url}: {str(e)}")
+            continue
+    
+    raise Exception("Failed to connect to any RPC endpoint")
+
+# Initialize Web3 with retry logic
+MAX_RETRIES = 3
+for attempt in range(MAX_RETRIES:
+    try:
+        web3 = init_web3()
+        break
+    except Exception as e:
+        if attempt == MAX_RETRIES - 1:
+            raise Exception(f"Failed to initialize Web3 after {MAX_RETRIES} attempts")
+        print(f"Retrying Web3 initialization... (attempt {attempt + 2}/{MAX_RETRIES})")
+        time.sleep(5)
 
 def load_random_wallet():
     """Load random wallet from wallets.json"""
@@ -33,11 +74,16 @@ def claim_faucet(wallet):
             headers = {"Content-Type": "application/json"}
             data = {"address": wallet["address"]}
             
-            response = requests.post(faucet_url, json=data, headers=headers)
+            # Disable SSL verification for faucet requests
+            response = requests.post(
+                faucet_url, 
+                json=data, 
+                headers=headers,
+                verify=False
+            )
             
             if response.status_code == 200:
                 print(f"✅ Claimed faucet ETH from {faucet_url}")
-                # Random delay between faucet claims
                 delay = random.randint(60, 180)
                 print(f"⏳ Waiting {delay} seconds...")
                 time.sleep(delay)

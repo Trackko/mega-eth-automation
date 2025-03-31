@@ -1,8 +1,11 @@
 """Configuration file for MegaETH automation"""
 
 MEGAETH_CONFIG = {
-    # RPC and Explorer
-    "RPC_URL": "https://rpc.megaeth.io",
+    "RPC_URLS": [
+        "https://rpc.testnet.megaeth.io",
+        "https://megaeth-testnet.rpc.io",
+        "http://rpc.megaeth.io"  # Fallback HTTP endpoint
+    ],
     "EXPLORER": "https://megaexplorer.xyz",
     
     # Faucets ordered by priority
