@@ -7,18 +7,30 @@ from web3 import Web3
 
 # ========== CONFIG ==========
 RPC_URL = "https://rpc.megaeth.io"  # MegaETH Testnet RPC
-wallets_json = os.getenv("WALLETS_JSON")  # Load wallets from GitHub Secrets
-wallets = json.loads(wallets_json) if wallets_json else []
+
+# Load wallets from wallets.json
+def load_wallets():
+    try:
+        with open('wallets.json', 'r') as f:
+            wallets_data = json.load(f)
+            print(f"✅ Loaded {len(wallets_data)} wallets from wallets.json")
+            return wallets_data
+    except FileNotFoundError:
+        print("❌ wallets.json not found")
+        return []
+    except json.JSONDecodeError:
+        print("❌ Invalid JSON format in wallets.json")
+        return []
+
+# Initialize wallets
+wallets = load_wallets()
+
+# Update transaction targets from wallet addresses
+TRANSACTION_TARGETS = [wallet['address'] for wallet in wallets]
 
 FAUCETS = [
     "https://testnet.megaeth.com/#3",
 ]
-
-TRANSACTION_TARGETS = [
-    "0xReceiver1",
-    "0xReceiver2",
-    "0xReceiver3"
-]  # Replace with real MegaETH addresses
 
 web3 = Web3(Web3.HTTPProvider(RPC_URL))
 
@@ -52,24 +64,38 @@ def claim_faucet(wallet):
 
 def send_transaction(private_key, to_address, amount_eth):
     """ Send a transaction with a random gas fee and delay. """
-    account = web3.eth.account.from_key(private_key)
-    nonce = web3.eth.get_transaction_count(account.address)
+    try:
+        account = web3.eth.account.from_key(private_key)
+        nonce = web3.eth.get_transaction_count(account.address)
+        
+        # Validate to_address
+        if not Web3.is_address(to_address):
+            raise ValueError(f"Invalid Ethereum address: {to_address}")
+            
+        txn = {
+            'to': Web3.to_checksum_address(to_address),
+            'value': web3.to_wei(amount_eth, 'ether'),
+            'gas': random.randint(21000, 50000),
+            'gasPrice': web3.to_wei(random.randint(5, 50), 'gwei'),
+            'nonce': nonce,
+        }
 
-    txn = {
-        'to': Web3.to_checksum_address(to_address),
-        'value': web3.to_wei(amount_eth, 'ether'),
-        'gas': random.randint(21000, 50000),
-        'gasPrice': web3.to_wei(random.randint(5, 50), 'gwei'),
-        'nonce': nonce,
-    }
-
-    signed_txn = web3.eth.account.sign_transaction(txn, private_key)
-    tx_hash = web3.eth.send_raw_transaction(signed_txn.rawTransaction)
-    print(f"✅ Sent {amount_eth} ETH from {account.address} to {to_address} → {tx_hash.hex()}")
+        signed_txn = web3.eth.account.sign_transaction(txn, private_key)
+        tx_hash = web3.eth.send_raw_transaction(signed_txn.rawTransaction)
+        print(f"✅ Sent {amount_eth} ETH from {account.address} to {to_address} → {tx_hash.hex()}")
+        
+    except ValueError as e:
+        print(f"❌ Transaction failed: {str(e)}")
+    except Exception as e:
+        print(f"❌ Unexpected error: {str(e)}")
 
 def execute_random_transaction(wallet):
     """ Perform different transaction types randomly. """
     transaction_type = random.choice(["send", "swap", "liquidity", "nft"])
 
     if transaction_type == "send":
-        to_address = random.choice([addr for addr in TRANSACTION_TARGETS if addr.lower() != wallet["address"].lower()])
+        # Choose a random target address that isn't the sender
+        to_address = random.choice([addr for addr in TRANSACTION_TARGETS 
+                                  if addr.lower() != wallet["address"].lower()])
+        amount_eth = random.uniform(0.001, 0.01)  # Random amount between 0.001 and 0.01 ETH
+        send_transaction(wallet["private_key"], to_address, amount_eth)
