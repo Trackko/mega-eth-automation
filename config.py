@@ -2,9 +2,9 @@
 
 MEGAETH_CONFIG = {
     "RPC_URLS": [
+        "http://rpc.megaeth.io",  # Try HTTP first
         "https://rpc.testnet.megaeth.io",
-        "https://megaeth-testnet.rpc.io",
-        "http://rpc.megaeth.io"  # Fallback HTTP endpoint
+        "https://megaeth-testnet.rpc.io"
     ],
     "EXPLORER": "https://megaexplorer.xyz",
     
