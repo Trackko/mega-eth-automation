@@ -41,7 +41,7 @@ def init_web3():
 
 # Initialize Web3 with retry logic
 MAX_RETRIES = 3
-for attempt in range(MAX_RETRIES:
+for attempt in range(MAX_RETRIES):  # Fixed: Added closing parenthesis
     try:
         web3 = init_web3()
         break
